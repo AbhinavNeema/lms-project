@@ -6,127 +6,292 @@ import { setUserData } from '../redux/userSlice'
 import { toast } from 'react-toastify'
 import { ClipLoader } from 'react-spinners'
 import { useNavigate } from 'react-router-dom'
-import { FaArrowLeftLong } from "react-icons/fa6";
+import { FaArrowLeftLong, FaGithub, FaLinkedin, FaTwitter, FaGlobe } from "react-icons/fa6";
 
 function EditProfile() {
-     let {userData} = useSelector(state=>state.user)
-     let [name,setName] = useState(userData.name || "")
-     let [description,setDescription] = useState(userData.description || "")
-     let [photoUrl,setPhotoUrl] = useState(null)
-     let dispatch = useDispatch()
-     let [loading,setLoading] = useState(false)
-     let navigate = useNavigate()
+    const { userData } = useSelector(state => state.user)
+    const dispatch = useDispatch()
+    const navigate = useNavigate()
+    const [loading, setLoading] = useState(false)
 
-      const formData = new FormData()
-      formData.append("name",name)
-      formData.append("description",description)
-      formData.append("photoUrl",photoUrl)
+    const [name, setName] = useState(userData.name || "")
+    const [description, setDescription] = useState(userData.description || "")
+    const [photoFile, setPhotoFile] = useState(null)
 
+    const [skills, setSkills] = useState(userData.skills || [])
+    const [skillInput, setSkillInput] = useState("")
 
+    const [interests, setInterests] = useState(userData.interests || [])
+    const [interestInput, setInterestInput] = useState("")
 
-     const updateProfile = async () => {
-      setLoading(true)
-      try {
-        const result = await axios.post(serverUrl + "/api/user/updateprofile" ,formData , {withCredentials:true} )
-        console.log(result.data)
-        dispatch(setUserData(result.data))
-        navigate("/")
-        setLoading(false)
-      
-        toast.success("Profile Update Successfully")
-        
+    const [socialLinks, setSocialLinks] = useState({
+        github: userData.socialLinks?.github || "",
+        linkedin: userData.socialLinks?.linkedin || "",
+        twitter: userData.socialLinks?.twitter || "",
+        personalWebsite: userData.socialLinks?.personalWebsite || "",
+    })
 
-        
-      } catch (error) {
-        console.log(error)
-        toast.error("Profile Update Error")
-        setLoading(false)
-      }
-      
-     }
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-10">
-      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-xl w-full relative">
-        <FaArrowLeftLong  className='absolute top-[5%] left-[5%] w-[22px] h-[22px] cursor-pointer' onClick={()=>navigate("/profile")}/>
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Edit Profile</h2>
+    const [preferredFields, setPreferredFields] = useState(userData.preferredFields || [])
+    const [preferredFieldInput, setPreferredFieldInput] = useState("")
 
-        <form  className="space-y-5" onSubmit={(e)=>e.preventDefault()}>
-          {/* Profile Photo */}
-          
-           <div className="flex flex-col items-center text-center">
-          {userData.photoUrl ? <img
-            src={userData?.photoUrl}
-            alt=""
-            className="w-24 h-24 rounded-full object-cover border-4 border-[black]"
-          /> : <div className='w-24 h-24 rounded-full text-white flex items-center justify-center text-[30px] border-2 bg-black  border-white cursor-pointer'>
-         {userData?.name.slice(0,1).toUpperCase()}
-          </div>}
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Select Avatar</label>
-            <input
-              type="file"
-              name="photoUrl"
-            
-              placeholder="Photo URL"
-              className="w-full px-4 py-2 border rounded-md text-sm "
-              onChange={(e)=>setPhotoUrl(e.target.files[0])}
-            />
-          </div>
+    const addTag = (e, type) => {
+        if (e.key === 'Enter' && e.target.value.trim() !== "") {
+            e.preventDefault()
+            if (type === 'skill') {
+                if (!skills.includes(skillInput)) setSkills([...skills, skillInput])
+                setSkillInput("")
+            } 
+            if (type === 'interest') {
+                if (!interests.includes(interestInput)) setInterests([...interests, interestInput])
+                setInterestInput("")
+            }
+            if (type === 'preferredFields') {
+                if (!preferredFields.includes(preferredFieldInput)) setPreferredFields([...preferredFields, preferredFieldInput])
+                setPreferredFieldInput("")
+            }
+        }
+    }
 
-          {/* Name */}
-          <div>
-            <label className="text-sm font-medium text-gray-700">Full Name</label>
-            <input
-              type="text"
-              name="name"
-              
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[black] placeholder:text-black"
-              placeholder={userData.name}
-              onChange={(e)=>setName(e.target.value)}
-              value={name}
-            />
-          </div>
+    // Helper: Remove tag
+    const removeTag = (tagToRemove, type) => {
+        if (type === 'skill') setSkills(skills.filter(s => s !== tagToRemove))
+        else if (type === 'preferredFields') setPreferredFields(preferredFields.filter(pf => pf !== tagToRemove))
+        else setInterests(interests.filter(i => i !== tagToRemove))
+    }
 
-          {/* Email (read-only) */}
-          <div>
-            <label className="text-sm font-medium text-gray-700">Email</label>
-            <input
-              type="email"
-              
-              readOnly
-              className="w-full mt-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600 placeholder:text-black"
-              placeholder={userData.email}
-            />
-          </div>
+    const updateProfile = async (e) => {
+        e.preventDefault()
+        setLoading(true)
 
-         
+        const formData = new FormData()
+        formData.append("name", name)
+        formData.append("description", description)
+        if (photoFile) formData.append("photoUrl", photoFile)
 
-          {/* Description */}
-          <div>
-            <label className="text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              name="description"
-             
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-[black]"
-              rows={3}
-              placeholder="Tell us about yourself"
-              onChange={(e)=>setDescription(e.target.value)}
-              value={description}
-            />
-          </div>
+        formData.append("skills", JSON.stringify(skills))
+        formData.append("interests", JSON.stringify(interests))
+        formData.append("socialLinks", JSON.stringify(socialLinks))
+        formData.append("preferredFields", JSON.stringify(preferredFields))
 
-          {/* Save Button */}
-          <button
-            type="submit"
-            className="w-full bg-[black] active:bg-[#454545] text-white py-2 rounded-md font-medium transition cursor-pointer" disabled={loading} onClick={updateProfile}
-          >
-            {loading ? <ClipLoader size={30} color='white'/> : "Save Changes"}
-          </button>
-        </form>
+        try {
+            const result = await axios.post(
+                `${serverUrl}/api/user/updateprofile`, 
+                formData, 
+                { withCredentials: true, headers: { 'Content-Type': 'multipart/form-data' } }
+            )
+
+            dispatch(setUserData(result.data.user)) 
+            toast.success("Profile Updated Successfully")
+            navigate("/profile")
+        } catch (error) {
+            console.error(error)
+            toast.error("Profile Update Error")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-10">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-2xl w-full relative">
+          <FaArrowLeftLong
+            className="absolute top-[4%] left-[5%] w-5 h-5 cursor-pointer"
+            onClick={() => navigate("/profile")}
+          />
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
+            Update Your Profile
+          </h2>
+
+          <form className="space-y-6" onSubmit={updateProfile}>
+            <div className="flex flex-col items-center gap-3">
+              <img
+                src={
+                  photoFile ? URL.createObjectURL(photoFile) : userData.photoUrl
+                }
+                className="w-24 h-24 rounded-full border-2 border-black object-cover"
+                alt="Preview"
+              />
+              <input
+                type="file"
+                onChange={(e) => setPhotoFile(e.target.files[0])}
+                className="text-xs"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold">Full Name</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full p-2 border rounded mt-1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold">
+                  Email (Fixed)
+                </label>
+                <input
+                  value={userData.email}
+                  readOnly
+                  className="w-full p-2 border rounded mt-1 bg-gray-50 text-gray-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold">Bio</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full p-2 border rounded mt-1"
+                rows="2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold">
+                Skills (Press Enter to add)
+              </label>
+              <input
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyDown={(e) => addTag(e, "skill")}
+                className="w-full p-2 border rounded mt-1"
+                placeholder="React, Node, Figma..."
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {skills.map((s) => (
+                  <span
+                    key={s}
+                    className="bg-black text-white px-2 py-1 rounded-md text-xs flex items-center gap-2">
+                    {s}{" "}
+                    <button type="button" onClick={() => removeTag(s, "skill")}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Social Links (Nested Object) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div className="flex items-center gap-2 border p-2 rounded">
+                <FaGithub />
+                <input
+                  placeholder="GitHub URL"
+                  value={socialLinks.github}
+                  onChange={(e) =>
+                    setSocialLinks({ ...socialLinks, github: e.target.value })
+                  }
+                  className="text-sm outline-none w-full"
+                />
+              </div>
+              <div className="flex items-center gap-2 border p-2 rounded">
+                <FaLinkedin className="text-blue-600" />
+                <input
+                  placeholder="LinkedIn URL"
+                  value={socialLinks.linkedin}
+                  onChange={(e) =>
+                    setSocialLinks({ ...socialLinks, linkedin: e.target.value })
+                  }
+                  className="text-sm outline-none w-full"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 border p-2 rounded">
+                <FaTwitter className="text-blue-400" />
+                <input
+                  placeholder="Twitter URL"
+                  value={socialLinks.twitter}
+                  onChange={(e) =>
+                    setSocialLinks({ ...socialLinks, twitter: e.target.value })
+                  }
+                  className="text-sm outline-none w-full"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 border p-2 rounded">
+                <FaGlobe className="text-blue-400" />
+                <input
+                  placeholder="Personal Website URL"
+                  value={socialLinks.personalWebsite}
+                  onChange={(e) =>
+                    setSocialLinks({ ...socialLinks, personalWebsite: e.target.value })
+                  }
+                  className="text-sm outline-none w-full"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700">
+                Interests (Press Enter to add)
+              </label>
+              <input
+                value={interestInput}
+                onChange={(e) => setInterestInput(e.target.value)}
+                onKeyDown={(e) => addTag(e, "interest")}
+                className="w-full p-2 border border-gray-300 rounded-md mt-1 focus:ring-2 focus:ring-black outline-none"
+                placeholder="AI, Web Development, Hiking..."
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {interests.map((item) => (
+                  <span
+                    key={item}
+                    className="bg-gray-100 text-gray-800 border border-gray-300 px-2 py-1 rounded-md text-xs flex items-center gap-2">
+                    {item}
+                    <button
+                      type="button"
+                      className="text-red-500 font-bold hover:text-red-700"
+                      onClick={() => removeTag(item, "interest")}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700">
+                PreferdFields (Press Enter to add)
+              </label>
+              <input
+                value={preferredFieldInput}
+                onChange={(e) => setPreferredFieldInput(e.target.value)}
+                onKeyDown={(e) => addTag(e, "preferredFields")}
+                className="w-full p-2 border border-gray-300 rounded-md mt-1 focus:ring-2 focus:ring-black outline-none"
+                placeholder="Software Development, Data Science..."
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {preferredFields.map((item) => (
+                  <span
+                    key={item}
+                    className="bg-gray-100 text-gray-800 border border-gray-300 px-2 py-1 rounded-md text-xs flex items-center gap-2">
+                    {item}
+                    <button
+                      type="button"
+                      className="text-red-500 font-bold hover:text-red-700"
+                      onClick={() => removeTag(item, "preferredFields")}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition">
+              {loading ? (
+                <ClipLoader size={20} color="white" />
+              ) : (
+                "Save Profile"
+              )}
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
-  )
+    );
 }
 
 export default EditProfile

@@ -25,6 +25,7 @@ import EnrolledCourse from './pages/EnrolledCourse'
 import ViewLecture from './pages/ViewLecture'
 import SearchWithAi from './pages/SearchWithAi'
 import getAllReviews from './customHooks/getAllReviews'
+import Career from './pages/Career'
 
 export const serverUrl = "http://localhost:8000"
 
@@ -60,6 +61,8 @@ function App() {
         <Route path='/createcourses' element={userData?.role === "educator"?<CreateCourse/>:<Navigate to={"/signup"}/>}/>
         <Route path='/createlecture/:courseId' element={userData?.role === "educator"?<CreateLecture/>:<Navigate to={"/signup"}/>}/>
         <Route path='/editlecture/:courseId/:lectureId' element={userData?.role === "educator"?<EditLecture/>:<Navigate to={"/signup"}/>}/>
+
+        <Route path='/career' element={userData?.role === "student"? <Career/>: <Navigate to={"/"}/>} />
         <Route path='/forgotpassword' element={<ForgotPassword/>}/>
          </Routes>
 

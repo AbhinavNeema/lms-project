@@ -3,44 +3,54 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true
+      required: true,
     },
     email: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     password: {
-      type: String
-      
+      type: String,
     },
     description: {
-      type: String
+      type: String,
     },
     role: {
       type: String,
       enum: ["educator", "student"],
-      required: true
+      required: true,
     },
     photoUrl: {
       type: String,
-      default: ""
+      default: "",
     },
-    enrolledCourses: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Course'
-    }],
-    resetOtp:{
-      type:String
+    enrolledCourses: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Course",
+      },
+    ],
+    resetOtp: {
+      type: String,
     },
-    otpExpires:{
-      type:Date
+    otpExpires: {
+      type: Date,
     },
-    isOtpVerifed:{
-      type:Boolean,
-      default:false
-    }
-    
+    isOtpVerifed: {
+      type: Boolean,
+      default: false,
+    },
+
+    interests: { type: [String], default: [] },
+    skills: { type: [String], default: [] },
+    preferredFields: { type: [String], default: [] },
+    socialLinks: {
+      linkedin: { type: String, default: null },
+      github: { type: String, default: null },
+      twitter: { type: String, default: null },
+      personalWebsite: { type: String, default: null },
+    },
   },
   { timestamps: true }
 );
