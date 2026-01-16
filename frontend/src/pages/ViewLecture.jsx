@@ -14,6 +14,14 @@ import axios from "axios";
 import { serverUrl } from "../App";
 import { toast } from "react-toastify";
 import { setUserData } from "../redux/userSlice";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 function ViewLecture() {
   const { courseId } = useParams();
@@ -37,7 +45,11 @@ function ViewLecture() {
   /* ================= REFS ================= */
   const mediaRef = useRef(null); // Renamed from videoRef to mediaRef to handle both
   const webcamRef = useRef(null);
-
+  const lastTimeRef = useRef(0);
+  const watchedSecondsRef = useRef(new Set()); // seconds actually watched
+  const lastSecondRef = useRef(-1);
+  const viewSentRef = useRef(false); // prevent multiple views
+  const lastPingRef = useRef(Date.now());
   /* ================= ATTENTION STATE ================= */
   const [lowCount, setLowCount] = useState(0);
   const [highCount, setHighCount] = useState(0);
@@ -45,8 +57,12 @@ function ViewLecture() {
   const [calibrating, setCalibrating] = useState(true);
   const [userPaused, setUserPaused] = useState(false);
   const [attentionScore, setAttentionScore] = useState(null);
-
+  /* ================= ANALYTICS STATE ================= */
+const [analytics, setAnalytics] = useState(null);
   /* ================= SEND FRAME ================= */
+  useEffect(() => {
+    console.log("SELECTED LECTURE:", selectedLecture);
+  }, [selectedLecture]);
   const sendFrame = async () => {
     // DISABLE tracking if in Audio Mode
     if (viewMode === "audio") return;
@@ -78,10 +94,20 @@ function ViewLecture() {
         setCalibrating(true);
         return;
       }
+      const t = Math.floor(mediaRef.current.currentTime);
 
       setCalibrating(false);
       setAttentionScore(temporal.attention ?? null);
-
+      // send attention analytics (average across users)
+await axios.post(
+  `${serverUrl}/api/analytics/attention`,
+  {
+    lectureId: selectedLecture._id,
+    t: Math.floor(mediaRef.current.currentTime),
+    score: temporal.attention,
+  },
+  { withCredentials: true }
+);
       if (temporal.state === "NOT_ATTENTIVE") {
         setLowCount((c) => c + 1);
         setHighCount(0);
@@ -93,13 +119,68 @@ function ViewLecture() {
       // Silent error logging to avoid console spam
     }
   };
+const handleTimeUpdate = async () => {
+  if (viewMode === "audio") return;
+  if (!mediaRef.current) return;
 
+  const currentSecond = Math.floor(mediaRef.current.currentTime);
+  const duration = Math.floor(mediaRef.current.duration || 0);
+
+  // ignore duplicate seconds
+  if (currentSecond === lastSecondRef.current) return;
+
+  // detect forward play only (no seek)
+  if (currentSecond === lastSecondRef.current + 1) {
+    watchedSecondsRef.current.add(currentSecond);
+
+    // send watch time (1 sec)
+    await axios.post(
+      `${serverUrl}/api/analytics/watch`,
+      {
+        lectureId: selectedLecture._id,
+        delta: 1,
+        duration,
+      },
+      { withCredentials: true }
+    );
+
+    /* ===== VIEW LOGIC (ONCE) ===== */
+    if (
+      !viewSentRef.current &&
+      watchedSecondsRef.current.size >= duration * 0.5
+    ) {
+      viewSentRef.current = true;
+
+      await axios.post(
+        `${serverUrl}/api/analytics/view`,
+        { lectureId: selectedLecture._id },
+        { withCredentials: true }
+      );
+    }
+  }
+
+  lastSecondRef.current = currentSecond;
+};
   /* ================= AUTO PAUSE / RESUME ================= */
   useEffect(() => {
     const interval = setInterval(sendFrame, 1000);
     return () => clearInterval(interval);
   }, [selectedLecture, viewMode]); // Re-run if mode changes
-
+  /* ================= FETCH LECTURE ANALYTICS ================= */
+useEffect(() => {
+  if (!selectedLecture?._id) return;
+  watchedSecondsRef.current.clear();
+lastSecondRef.current = -1;
+viewSentRef.current = false;
+  axios
+    .get(`${serverUrl}/api/analytics/lecture/${selectedLecture._id}`, {
+      withCredentials: true,
+    })
+    .then((res) => {
+      setAnalytics(res.data);
+    })
+    .catch(() => {});
+}, [selectedLecture]);
   useEffect(() => {
     // Only auto-pause if in Video Mode
     if (
@@ -212,11 +293,23 @@ function ViewLecture() {
                   key={selectedLecture._id + "-video"}
                   src={selectedLecture.videoUrl}
                   controls
+                  onPlay={async () => {
+                    setUserPaused(false);
+
+                    
+
+                    // refetch analytics after increment
+                    const res = await axios.get(
+                      `${serverUrl}/api/analytics/lecture/${selectedLecture._id}`,
+                      { withCredentials: true }
+                    );
+                    setAnalytics(res.data);
+                  }}
                   onPause={() => setUserPaused(true)}
-                  onPlay={() => setUserPaused(false)}
                   onEnded={handleLectureEnd}
                   className="w-full h-full object-contain bg-black"
                   crossOrigin="anonymous"
+                  onTimeUpdate={handleTimeUpdate}
                 />
               ) : (
                 <div className="text-white flex flex-col items-center justify-center h-full gap-2">
@@ -240,6 +333,8 @@ function ViewLecture() {
                   key={selectedLecture._id + "-audio"}
                   src={selectedLecture.audioUrl}
                   controls
+                  onPlay={() => setUserPaused(false)}   // 🔴 ADD
+                  onPause={() => setUserPaused(true)} 
                   onEnded={handleLectureEnd}
                   className="w-3/4"
                 />
@@ -270,7 +365,64 @@ function ViewLecture() {
                 </div>
               )}
           </div>
+              {/* ================= GLOBAL LECTURE ANALYTICS ================= */}
+{analytics && (
+  <div className="mt-6 space-y-4">
+    {/* Stats */}
+    <div className="flex flex-wrap gap-4 text-sm font-medium text-gray-700">
+      <div className="bg-gray-50 px-4 py-2 rounded-lg border">
+        👁️ Views: {analytics.totalViews || 0}
+      </div>
+      <div className="bg-gray-50 px-4 py-2 rounded-lg border">
+        ⏱️ Watched:{" "}
+        {((analytics.totalWatchTimeSec || 0) / 3600).toFixed(2)} hrs
+      </div>
+    </div>
 
+    {/* Attention Graph */}
+    {analytics && mediaRef.current && (
+  <div className="bg-white p-4 rounded-xl border">
+    <h3 className="font-bold text-gray-800 mb-3">
+      📈 Average Attention Timeline
+    </h3>
+
+    {(() => {
+      const duration = Math.floor(mediaRef.current.duration || 0);
+
+      const avgMap = analytics.attentionTimelineAvg || {};
+
+      const graphData = Array.from({ length: duration }, (_, t) => ({
+        time: t,
+        attention: Math.round(avgMap[t]?.avgScore || 0),
+      }));
+
+      return (
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={graphData}>
+            <XAxis
+              dataKey="time"
+              label={{
+                value: "Time (seconds)",
+                position: "insideBottom",
+              }}
+            />
+            <YAxis domain={[0, 100]} />
+            <Tooltip />
+            <Line
+              type="monotone"
+              dataKey="attention"
+              stroke="#2563eb"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      );
+    })()}
+  </div>
+)}
+  </div>
+)}
           {/* Meta & Downloads */}
           <div className="mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-t pt-4">
             <div>
