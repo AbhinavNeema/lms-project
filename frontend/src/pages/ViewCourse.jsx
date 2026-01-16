@@ -170,7 +170,7 @@ function ViewCourse() {
 
           {/* Thumbnail */}
           <div className="w-full md:w-1/2">
-            <FaArrowLeftLong className='text-[black] w-[22px] h-[22px] cursor-pointer' onClick={() => navigate("/")} />
+             <FaArrowLeftLong  className='text-[black] w-[22px] h-[22px] cursor-pointer' onClick={()=>navigate("/allcourses")}/>
             {selectedCourseData?.thumbnail ? <img
               src={selectedCourseData?.thumbnail}
               alt="Course Thumbnail"
@@ -208,10 +208,8 @@ function ViewCourse() {
               </div>
 
               <div>
-                {/* Dynamic Price */}
-                <span className="text-lg font-semibold text-black">
-                  {selectedCourseData?.price ? `₹${selectedCourseData.price}` : "Free"}
-                </span>
+                <span className="text-lg font-semibold text-black">{selectedCourseData?.price}</span>{" "}
+                <span className="line-through text-sm text-gray-400">{(selectedCourseData?.price*2)}</span>
               </div>
             </div>
 

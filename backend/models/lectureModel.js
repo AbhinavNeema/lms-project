@@ -8,6 +8,9 @@ const lectureSchema = new mongoose.Schema({
     videoUrl:{
         type:String
     },
+    audioUrl:{
+        type:String
+    },
     isPreviewFree:{
         type:Boolean
     },

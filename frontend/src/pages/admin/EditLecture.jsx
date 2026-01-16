@@ -39,6 +39,7 @@ function EditLecture() {
         setLoading(false)
       }
     }
+    
 
     const removeLecture = async () => {
       setLoading1(true)

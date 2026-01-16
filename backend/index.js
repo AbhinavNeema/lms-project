@@ -10,7 +10,8 @@ import paymentRouter from "./routes/paymentRoute.js"
 import aiRouter from "./routes/aiRoute.js"
 import reviewRouter from "./routes/reviewRoute.js"
 import attentionRouter from "./routes/attentionRoute.js"
-import upload from "./routes/upload.js"
+import uploadRouter from "./routes/upload.js"
+
 dotenv.config()
 
 let port = process.env.PORT
@@ -28,7 +29,7 @@ app.use("/api/payment", paymentRouter)
 app.use("/api/ai", aiRouter)
 app.use("/api/review", reviewRouter)
 app.use("/api/attention", attentionRouter)
-app.use("/api/divide", upload)
+app.use("/api/divide", uploadRouter)
 
 app.get("/" , (req,res)=>{
     res.send("Hello From Server")

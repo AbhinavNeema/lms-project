@@ -5,6 +5,10 @@ from attention import analyze_frame
 
 app = Flask(__name__)
 
+@app.route("/")
+def index():
+    return "Attention Engine is running."
+
 @app.route("/analyze", methods=["POST"])
 def analyze():
     print("FILES:", request.files)

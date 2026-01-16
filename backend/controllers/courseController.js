@@ -1,4 +1,4 @@
-import uploadOnCloudinary from "../configs/cloudinary.js"
+import uploadOnCloudinary, { uploadMediaWithAudio } from "../configs/cloudinary.js"
 import Course from "../models/courseModel.js"
 import Lecture from "../models/lectureModel.js"
 import User from "../models/userModel.js"
@@ -159,18 +159,25 @@ export const editLecture = async (req,res) => {
           if(!lecture){
             return res.status(404).json({message:"Lecture not found"})
         }
-        let videoUrl
-        if(req.file){
-            videoUrl =await uploadOnCloudinary(req.file.path)
-            lecture.videoUrl = videoUrl
-                }
+        const mediaResult = await uploadMediaWithAudio(req.file.buffer);
+        // console.log("Media Result:", mediaResult);
+
+        if (mediaResult) {
+          lecture.videoUrl = mediaResult.videoUrl;
+          lecture.audioUrl = mediaResult.audioUrl;
+        }
         if(lectureTitle){
             lecture.lectureTitle = lectureTitle
         }
         lecture.isPreviewFree = isPreviewFree
         
-         await lecture.save()
-        return res.status(200).json(lecture)
+        await lecture.save()
+        
+        return res.status(200).json({
+          success: true,
+          message: "Lecture updated successfully",
+          lecture,
+        });
     } catch (error) {
         return res.status(500).json({message:`Failed to edit Lectures ${error}`})
     }
