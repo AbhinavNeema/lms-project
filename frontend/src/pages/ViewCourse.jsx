@@ -66,26 +66,23 @@ function ViewCourse() {
   }
 
   // === NEW: FETCH LIVE LECTURES ===
+// === UPDATE THIS FUNCTION ===
   const fetchLiveLectures = async () => {
     try {
       const { data } = await axios.get(`${serverUrl}/api/live/course/${courseId}`, { withCredentials: true });
       if (data.success) {
         setLiveLectures(data.lectures);
         
-        // Simple check: Is there a class starting within the last hour or next 15 mins?
-        const now = new Date();
-        const active = data.lectures.find(l => {
-            const start = new Date(l.startTime);
-            const diff = (now - start) / 1000 / 60; // difference in minutes
-            // Active if: Started less than 60 mins ago OR starts in next 15 mins
-            return diff > -15 && diff < 60; 
-        });
+        // FIX: Check if the lecture is actually marked as "Active" in Database
+        const active = data.lectures.find(l => l.isActive === true);
+        
         setActiveLiveClass(active);
       }
     } catch (error) {
       console.error("Failed to fetch live lectures", error);
     }
   };
+  // ============================
   // ================================
 
   const checkEnrollment = () => {

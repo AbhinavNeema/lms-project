@@ -22,7 +22,8 @@ export const createLiveLecture = async (req, res) => {
       description,
       startTime,
       duration,
-      meetingId
+      meetingId,
+      isActive: true // Ensure it starts as active
     });
 
     await Course.findByIdAndUpdate(courseId, {
@@ -39,6 +40,7 @@ export const createLiveLecture = async (req, res) => {
 export const getLectures = async (req, res) => {
   try {
     const { courseId } = req.params;
+    // Only return lectures that are active or scheduled
     const lectures = await LiveLecture.find({ courseId }).sort({ startTime: 1 });
     res.status(200).json({ success: true, lectures });
   } catch (error) {
@@ -51,10 +53,37 @@ export const getStreamToken = async (req, res) => {
     // FIX: Use req.userId instead of req.user._id
     const userId = req.userId.toString();
     
+    // Stream requires user IDs to be strings. 
+    // You can optionally add a name/image here if you want pre-populated users in Stream dashboard
     const token = streamClient.generateUserToken({ user_id: userId });
+    
     res.status(200).json({ success: true, token, apiKey: process.env.STREAM_API_KEY });
   } catch (error) {
     console.log(error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+export const endLiveLecture = async (req, res) => {
+  try {
+    const { meetingId } = req.body;
+    
+    // Find and update the lecture to inactive
+    const lecture = await LiveLecture.findOneAndUpdate(
+      { meetingId },
+      { isActive: false }, // This stops it from showing on the student page
+      { new: true }
+    );
+
+    if (!lecture) {
+      return res.status(404).json({ success: false, message: "Lecture not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Class ended successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
