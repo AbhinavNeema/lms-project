@@ -274,3 +274,41 @@ export const getStudentPerformance = async (req, res) => {
     return res.status(500).json({ message: "Error fetching analytics" });
   }
 };
+
+export const getTeacherAnalytics = async (req, res) => {
+  try {
+      const userId = req.userId;
+
+      const quizzes = await Quiz.find({ createdBy: userId })
+          .populate("courseId", "title")         // Get Course Name
+          .populate("lectureId", "lectureTitle") // Get Lecture Name
+          .sort({ createdAt: -1 });
+
+        const analyticsData = quizzes.map((quiz) => {
+          const avgScore = quiz.totalAttempts > 0 
+            ? (quiz.totalScoreSum / quiz.totalAttempts).toFixed(1) 
+            : 0;
+
+          return {
+            id: quiz._id,
+            quizTitle: quiz.quizTitle,
+            courseName: quiz.courseId ? quiz.courseId.title : "Deleted Course",
+            lectureName: quiz.lectureId ? quiz.lectureId.lectureTitle : "Deleted Lecture",
+            totalAttempts: quiz.totalAttempts,
+            highestScore: quiz.highestScore,
+            averageScore: avgScore,
+            totalQuestions: quiz.questions.length
+          };
+        });
+
+        return res.status(200).json({
+          success: true,
+          data: analyticsData
+        });
+
+      } 
+  catch (error) {
+        console.error("Teacher Analytics Error:", error);
+        return res.status(500).json({ message: "Failed to fetch analytics" });
+      }
+};
