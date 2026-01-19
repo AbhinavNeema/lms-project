@@ -7,11 +7,12 @@ import { FaArrowLeftLong } from "react-icons/fa6";
 import img from "../assets/empty.jpg"
 import Card from "../components/Card.jsx"
 import { setSelectedCourseData } from '../redux/courseSlice';
-import { FaLock, FaPlayCircle } from "react-icons/fa";
+import { FaLock, FaPlayCircle, FaVideo } from "react-icons/fa";
 import { toast } from 'react-toastify';
 import { FaStar } from "react-icons/fa6";
 import CourseChat from "../components/CourseChat";
 import CourseAIChat from "../components/CourseAIChat";
+
 function ViewCourse() {
 
   const { courseId } = useParams();
@@ -27,7 +28,11 @@ function ViewCourse() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
-
+  
+  // === NEW STATE FOR LIVE LECTURES ===
+  const [liveLectures, setLiveLectures] = useState([]);
+  const [activeLiveClass, setActiveLiveClass] = useState(null);
+  // ===================================
 
   const handleReview = async () => {
     try {
@@ -43,28 +48,45 @@ function ViewCourse() {
     }
   }
 
-
   const calculateAverageRating = (reviews) => {
     if (!reviews || reviews.length === 0) return 0;
-
     const total = reviews.reduce((sum, review) => sum + review.rating, 0);
-    return (total / reviews.length).toFixed(1); // rounded to 1 decimal
+    return (total / reviews.length).toFixed(1); 
   };
 
-  // Usage:
   const avgRating = calculateAverageRating(selectedCourseData?.reviews);
-  console.log("Average Rating:", avgRating);
-
 
   const fetchCourseData = async () => {
     courseData.map((item) => {
       if (item._id === courseId) {
         dispatch(setSelectedCourseData(item))
-        console.log(selectedCourseData)
         return null;
       }
     })
   }
+
+  // === NEW: FETCH LIVE LECTURES ===
+  const fetchLiveLectures = async () => {
+    try {
+      const { data } = await axios.get(`${serverUrl}/api/live/course/${courseId}`, { withCredentials: true });
+      if (data.success) {
+        setLiveLectures(data.lectures);
+        
+        // Simple check: Is there a class starting within the last hour or next 15 mins?
+        const now = new Date();
+        const active = data.lectures.find(l => {
+            const start = new Date(l.startTime);
+            const diff = (now - start) / 1000 / 60; // difference in minutes
+            // Active if: Started less than 60 mins ago OR starts in next 15 mins
+            return diff > -15 && diff < 60; 
+        });
+        setActiveLiveClass(active);
+      }
+    } catch (error) {
+      console.error("Failed to fetch live lectures", error);
+    }
+  };
+  // ================================
 
   const checkEnrollment = () => {
     const verify = userData?.enrolledCourses?.some(c => {
@@ -72,7 +94,6 @@ function ViewCourse() {
       return enrolledId?.toString() === courseId?.toString();
     });
 
-    console.log("Enrollment verified:", verify);
     if (verify) {
       setIsEnrolled(true);
     }
@@ -81,10 +102,13 @@ function ViewCourse() {
   useEffect(() => {
     fetchCourseData()
     checkEnrollment()
-  }, [courseId, courseData, lectureData])
+    // Trigger live lecture fetch
+    if(isEnrolled) {
+        fetchLiveLectures();
+    }
+  }, [courseId, courseData, lectureData, isEnrolled])
 
 
-  // Fetch creator info once course data is available
   useEffect(() => {
     const getCreator = async () => {
       if (selectedCourseData?.creator) {
@@ -95,7 +119,6 @@ function ViewCourse() {
             { withCredentials: true }
           );
           setCreatorData(result.data);
-          console.log(result.data)
         } catch (error) {
           console.error("Error fetching creator:", error);
         }
@@ -110,7 +133,7 @@ function ViewCourse() {
     if (creatorData?._id && courseData.length > 0) {
       const creatorCourses = courseData.filter(
         (course) =>
-          course.creator === creatorData._id && course._id !== courseId // Exclude current course
+          course.creator === creatorData._id && course._id !== courseId 
       );
       setSelectedCreatorCourse(creatorCourses);
 
@@ -120,22 +143,19 @@ function ViewCourse() {
 
   const handleEnroll = async (courseId, userId) => {
     try {
-      // 1. Create Order
       const orderData = await axios.post(serverUrl + "/api/payment/create-order", {
         courseId,
         userId
       }, { withCredentials: true });
-      console.log(orderData)
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID, // from .env
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID, 
         amount: orderData.data.amount,
         currency: "INR",
         name: "TLE Terminator LMS",
         description: "Course Enrollment Payment",
         order_id: orderData.data.id,
         handler: async function (response) {
-          console.log("Razorpay Response:", response);
           try {
             const verifyRes = await axios.post(serverUrl + "/api/payment/verify-payment", {
               ...response,
@@ -147,7 +167,6 @@ function ViewCourse() {
             toast.success(verifyRes.data.message);
           } catch (verifyError) {
             toast.error("Payment verification failed.");
-            console.error("Verification Error:", verifyError);
           }
         },
       };
@@ -157,7 +176,6 @@ function ViewCourse() {
 
     } catch (err) {
       toast.error("Something went wrong while enrolling.");
-      console.error("Enroll Error:", err);
     }
   };
 
@@ -216,6 +234,18 @@ function ViewCourse() {
               </span>
             </div>
 
+            {/* === LIVE CLASS BUTTON === */}
+            {isEnrolled && activeLiveClass && (
+                <button 
+                  onClick={() => navigate(`/live/${activeLiveClass.meetingId}`)}
+                  className="w-full bg-red-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 animate-pulse shadow-red-200 shadow-lg mb-2"
+                >
+                  <FaVideo className="animate-bounce" />
+                  🔴 Join Live: {activeLiveClass.topic}
+                </button>
+            )}
+            {/* ========================= */}
+
             {!isEnrolled ? (
               <button
                 onClick={() => handleEnroll(courseId, userData._id)}
@@ -228,7 +258,7 @@ function ViewCourse() {
                 onClick={() => navigate(`/viewlecture/${courseId}`)}
                 className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold"
               >
-                Watch Now
+                Go to Lectures
               </button>
             )}
 
@@ -348,6 +378,7 @@ function ViewCourse() {
         </div>
       )}
       {isEnrolled && <CourseAIChat courseId={courseId} />}
+      
       {/* INSTRUCTOR */}
       <section className="bg-white rounded-3xl p-8 shadow-lg">
         <div className="flex items-center gap-6">

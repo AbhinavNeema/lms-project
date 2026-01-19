@@ -191,6 +191,7 @@ import {
   FaPlus,
   FaBookOpen,
   FaLayerGroup,
+  FaVideo,
 } from "react-icons/fa";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -217,11 +218,21 @@ const item = {
 function CreateLecture() {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  
+  // Standard Lecture State
   const [lectureTitle, setLectureTitle] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Live Lecture State
+  const [liveTopic, setLiveTopic] = useState("");
+  const [liveDate, setLiveDate] = useState("");
+  const [liveTime, setLiveTime] = useState("");
+  const [liveLoading, setLiveLoading] = useState(false);
+
   const dispatch = useDispatch();
   const { lectureData } = useSelector((state) => state.lecture);
 
+  // --- HANDLER: Create Standard Video Lecture ---
   const createLectureHandler = async () => {
     if (!lectureTitle.trim()) {
       toast.error("Lecture title cannot be empty");
@@ -242,6 +253,42 @@ function CreateLecture() {
       toast.error(error.response?.data?.message || "Failed to create lecture");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- HANDLER: Create Live Class (NEW) ---
+  const createLiveLectureHandler = async () => {
+    if (!liveTopic || !liveDate || !liveTime) {
+      toast.error("Please fill all live class details");
+      return;
+    }
+
+    setLiveLoading(true);
+    try {
+      // Combine Date and Time
+      const startTime = new Date(`${liveDate}T${liveTime}`).toISOString();
+
+      const { data } = await axios.post(
+        `${serverUrl}/api/live/create`,
+        {
+          courseId: courseId,
+          topic: liveTopic,
+          startTime: startTime,
+          meetingId: `class-${Date.now()}`, // Unique Meeting ID
+        },
+        { withCredentials: true }
+      );
+
+      toast.success("Live Class Scheduled!");
+      // Reset Form
+      setLiveTopic("");
+      setLiveDate("");
+      setLiveTime("");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error creating live class");
+    } finally {
+      setLiveLoading(false);
     }
   };
 
@@ -267,7 +314,7 @@ function CreateLecture() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-4xl mx-auto bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden border border-slate-100"
       >
-        {/* HEADER: Matching the Edit Lecture Theme */}
+        {/* HEADER */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-8 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
@@ -279,10 +326,10 @@ function CreateLecture() {
               </button>
               <div>
                 <h2 className="text-3xl font-bold tracking-tight">
-                  Create Lectures
+                  Course Content
                 </h2>
                 <p className="text-slate-400 text-sm opacity-90">
-                  Organize and structure your course content
+                  Manage lectures and live sessions
                 </p>
               </div>
             </div>
@@ -295,8 +342,9 @@ function CreateLecture() {
           </div>
         </div>
 
-        <div className="p-6 md:p-10 space-y-10">
-          {/* ADD LECTURE CARD */}
+        <div className="p-6 md:p-10 space-y-8">
+          
+          {/* 1. ADD STANDARD LECTURE CARD */}
           <motion.div
             variants={item}
             initial="hidden"
@@ -308,7 +356,7 @@ function CreateLecture() {
             <div className="relative space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] uppercase tracking-widest font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                  New Entry
+                  New Video Lesson
                 </span>
               </div>
               <h2 className="text-xl font-bold text-slate-800">
@@ -341,6 +389,72 @@ function CreateLecture() {
               </div>
             </div>
           </motion.div>
+
+          {/* 2. ADD LIVE CLASS CARD (NEW) */}
+          <motion.div
+            variants={item}
+            initial="hidden"
+            animate="visible"
+            className="relative overflow-hidden rounded-3xl border border-red-100 bg-gradient-to-br from-red-50/50 to-white p-6 md:p-8 shadow-sm"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-100/30 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+
+            <div className="relative space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-widest font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+                  Live Session
+                </span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">
+                Schedule a Live Class
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="md:col-span-2">
+                    <input
+                    type="text"
+                    placeholder="Topic (e.g. Doubt Clearing)"
+                    className="w-full rounded-2xl border-2 border-slate-100 bg-white px-5 py-4 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all outline-none font-medium text-slate-700 shadow-sm"
+                    onChange={(e) => setLiveTopic(e.target.value)}
+                    value={liveTopic}
+                    />
+                </div>
+                <div>
+                     <input
+                    type="date"
+                    className="w-full rounded-2xl border-2 border-slate-100 bg-white px-5 py-4 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all outline-none font-medium text-slate-700 shadow-sm"
+                    onChange={(e) => setLiveDate(e.target.value)}
+                    value={liveDate}
+                    />
+                </div>
+                <div>
+                     <input
+                    type="time"
+                    className="w-full rounded-2xl border-2 border-slate-100 bg-white px-5 py-4 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all outline-none font-medium text-slate-700 shadow-sm"
+                    onChange={(e) => setLiveTime(e.target.value)}
+                    value={liveTime}
+                    />
+                </div>
+              </div>
+              
+              <button
+                  disabled={liveLoading}
+                  onClick={createLiveLectureHandler}
+                  className="w-full bg-red-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-red-700 hover:shadow-xl hover:shadow-red-200 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  {liveLoading ? (
+                    <ClipLoader size={22} color="white" />
+                  ) : (
+                    <>
+                      <FaVideo size={14} />
+                      <span>Schedule Live Class</span>
+                    </>
+                  )}
+                </button>
+            </div>
+          </motion.div>
+
+          <div className="border-b border-slate-200 my-8"></div>
 
           {/* LECTURE LIST */}
           <div className="space-y-6">

@@ -12,7 +12,6 @@ import AllCourses from "./pages/AllCourses";
 import EditProfile from './pages/EditProfile'
 import Dashboard from './pages/admin/Dashboard'
 import Courses from './pages/admin/Courses'
-import AllCouses from './pages/AllCourses'
 import AddCourses from './pages/admin/AddCourses'
 import CreateCourse from './pages/admin/CreateCourse'
 import CreateLecture from './pages/admin/CreateLecture'
@@ -29,6 +28,10 @@ import getAllReviews from './customHooks/getAllReviews'
 import Career from './pages/Career'
 import EditQuiz from './pages/admin/EditQuiz'
 import StudentDashboard from './pages/StudentDashboard'
+
+
+import LiveRoom from './pages/LiveRoom'; 
+
 
 export const serverUrl = "http://localhost:8000"
 
@@ -80,6 +83,13 @@ function App() {
           element={userData ? <SearchWithAi /> : <Navigate to={"/signup"} />}
         />
 
+       
+        <Route
+          path="/live/:meetingId"
+          element={userData ? <LiveRoom /> : <Navigate to="/login" />}
+        />
+
+
         <Route
           path="/dashboard"
           element={
@@ -130,17 +140,6 @@ function App() {
             )
           }
         />
-        <Route
-          path="/editlecture/:courseId/:lectureId"
-          element={
-            userData?.role === "educator" ? (
-              <EditLecture />
-            ) : (
-              <Navigate to={"/signup"} />
-            )
-          }
-        />
-
         <Route
           path="/editlecture/:courseId/:lectureId"
           element={

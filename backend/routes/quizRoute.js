@@ -10,6 +10,7 @@ import {
   getCourseQuizzes,
   getQuizAttempt,
   getStudentPerformance,
+  getTeacherAnalytics,
 } from "../controllers/quizController.js";
 
 const quizRouter = express.Router();
@@ -23,5 +24,6 @@ quizRouter.post("/:quizId/submit", isAuth, submitQuiz);
 quizRouter.get("/course/:courseId", isAuth, getCourseQuizzes);
 quizRouter.get("/:quizId/attempt", isAuth, getQuizAttempt);
 quizRouter.get("/user/analytics", isAuth, getStudentPerformance);
+quizRouter.get("/teacher/analytics", isAuth, getTeacherAnalytics);
 
 export default quizRouter;
