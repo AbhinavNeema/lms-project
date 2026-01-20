@@ -3,6 +3,8 @@ import { LiveLecture } from "../models/liveLectureModel.js";
 import Course from "../models/courseModel.js"; 
 import { v2 as cloudinary } from 'cloudinary'; 
 import dotenv from "dotenv";
+import fs from 'fs';
+import path from 'path';
 dotenv.config();
 
 // Configure Cloudinary
@@ -12,13 +14,24 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET 
 });
 
-const streamClient = new StreamClient(process.env.STREAM_API_KEY, process.env.STREAM_SECRET_KEY);
+// Initialize Stream client only if credentials exist
+let streamClient = null;
+if (process.env.STREAM_API_KEY && process.env.STREAM_SECRET_KEY) {
+  streamClient = new StreamClient(
+    process.env.STREAM_API_KEY, 
+    process.env.STREAM_SECRET_KEY
+  );
+} else {
+  console.warn("[Live] Stream credentials not configured. Using fallback mode.");
+}
 
 export const createLiveLecture = async (req, res) => {
   try {
     const { courseId, topic, description, startTime, duration } = req.body;
     const instructorId = req.userId; 
     const meetingId = `live-${courseId}-${Date.now()}`;
+
+    console.log(`[Create Lecture] Creating lecture: ${meetingId}`);
 
     const newLecture = await LiveLecture.create({
       courseId,
@@ -28,15 +41,22 @@ export const createLiveLecture = async (req, res) => {
       startTime,
       duration,
       meetingId,
-      isActive: true
+      isActive: true,
     });
 
     await Course.findByIdAndUpdate(courseId, {
       $push: { liveSchedule: newLecture._id }
     });
 
-    res.status(201).json({ success: true, lecture: newLecture });
+    console.log(`[Create Lecture] Lecture created: ${newLecture._id}`);
+    
+    res.status(201).json({ 
+      success: true, 
+      lecture: newLecture,
+      message: "Live lecture created successfully."
+    });
   } catch (error) {
+    console.error(`[Create Lecture Error]:`, error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -54,10 +74,45 @@ export const getLectures = async (req, res) => {
 export const getStreamToken = async (req, res) => {
   try {
     const userId = req.userId.toString();
-    const token = streamClient.generateUserToken({ user_id: userId, validity_in_seconds: 86400 });
-    res.status(200).json({ success: true, token, apiKey: process.env.STREAM_API_KEY });
+    
+    // Check if Stream is configured
+    if (!streamClient) {
+      return res.status(200).json({ 
+        success: true, 
+        token: "no-stream-token",
+        apiKey: "no-stream-key",
+        userId,
+        mode: "fallback",
+        message: "Stream not configured. Using fallback mode."
+      });
+    }
+    
+    const token = streamClient.generateUserToken({ 
+      user_id: userId, 
+      validity_in_seconds: 86400 
+    });
+    
+    console.log(`[Get Token] Generated token for user: ${userId}`);
+    
+    res.status(200).json({ 
+      success: true, 
+      token, 
+      apiKey: process.env.STREAM_API_KEY,
+      userId,
+      mode: "stream"
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(`[Get Token Error]:`, error);
+    
+    // Return fallback token even if Stream fails
+    res.status(200).json({ 
+      success: true, 
+      token: "fallback-token-" + Date.now(),
+      apiKey: "fallback-key",
+      userId: req.userId.toString(),
+      mode: "fallback",
+      message: "Using fallback mode due to Stream error."
+    });
   }
 };
 
@@ -66,102 +121,311 @@ export const endLiveLecture = async (req, res) => {
     const { meetingId } = req.body;
     const lecture = await LiveLecture.findOneAndUpdate(
       { meetingId },
-      { isActive: false },
+      { 
+        isActive: false, 
+        endedAt: new Date()
+      },
       { new: true }
     );
-    if (!lecture) return res.status(404).json({ success: false, message: "Lecture not found" });
-    res.status(200).json({ success: true, message: "Class ended" });
+    
+    if (!lecture) {
+      return res.status(404).json({ success: false, message: "Lecture not found" });
+    }
+    
+    console.log(`[End Lecture] Lecture ended: ${meetingId}`);
+    
+    res.status(200).json({ 
+      success: true, 
+      message: "Class ended successfully." 
+    });
   } catch (error) {
+    console.error(`[End Lecture Error]:`, error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// === FIXED SYNC FUNCTION (Instance Method) ===
-export const syncRecording = async (req, res) => {
+// === UPLOAD RECORDING FUNCTION ===
+export const uploadRecording = async (req, res) => {
   try {
     const { meetingId } = req.body;
     const lecture = await LiveLecture.findOne({ meetingId });
 
-    if (!lecture) return res.status(404).json({ success: false, message: "Lecture not found" });
-    if (lecture.recordingUrl) return res.status(200).json({ success: true, message: "Already has recording", url: lecture.recordingUrl });
-
-    console.log(`[Sync] Checking recordings for call: default:${meetingId}`);
-
-    // 1. GET CALL INSTANCE
-    const call = streamClient.video.call('default', meetingId);
-    
-    // 2. QUERY RECORDINGS FROM CALL DIRECTLY
-    const { recordings } = await call.queryRecordings();
-
-    // 3. FIND VALID RECORDING
-    const validRecording = recordings.find(r => r.url && r.end_time);
-
-    if (!validRecording) {
-        console.log(`[Sync] No finished recordings found. Count: ${recordings.length}`);
-        return res.status(200).json({ success: false, message: "Processing... Try again in 2 mins." });
+    if (!lecture) {
+      // Clean up uploaded file
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(404).json({ 
+        success: false, 
+        message: "Lecture not found" 
+      });
     }
 
-    console.log(`[Sync] Found URL: ${validRecording.url}. Uploading to Cloudinary...`);
+    // Check if video file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No video file provided" 
+      });
+    }
 
-    // 4. UPLOAD TO CLOUDINARY
-    const uploadResponse = await cloudinary.uploader.upload(validRecording.url, {
+    console.log(`[Upload Recording] Processing for: ${meetingId}`);
+    console.log(`[Upload Recording] File:`, req.file);
+
+    try {
+      // Upload to Cloudinary
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
         resource_type: "video",
-        public_id: `lecture_${meetingId}`,
+        public_id: `lecture_${lecture._id}_${Date.now()}`,
         folder: "lms_recordings",
-        eager: [
-            { width: 300, height: 300, crop: "pad", audio_codec: "none" }
-        ],                                  
-    });
+        timeout: 180000
+      });
 
-    // 5. SAVE
-    lecture.recordingUrl = uploadResponse.secure_url;
-    await lecture.save();
-    
-    console.log("[Sync] Success!");
+      // Update lecture with recording URL
+      lecture.recordingUrl = uploadResult.secure_url;
+      lecture.recordingUploadedAt = new Date();
+      await lecture.save();
 
-    res.status(200).json({ success: true, message: "Synced successfully!", url: lecture.recordingUrl });
+      console.log(`[Upload Recording] Success! URL: ${lecture.recordingUrl}`);
+
+      // Clean up uploaded file
+      fs.unlinkSync(req.file.path);
+
+      res.status(200).json({
+        success: true,
+        message: "Recording uploaded successfully!",
+        url: lecture.recordingUrl
+      });
+
+    } catch (uploadError) {
+      // Clean up uploaded file
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      throw uploadError;
+    }
 
   } catch (error) {
-    console.error("[Sync Error]:", error);
-    res.status(500).json({ success: false, message: error.message || "Server Error" });
+    console.error(`[Upload Recording Error]:`, error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 };
 
-// === FIXED GET ALL LECTURES (Instance Method) ===
+// === UPDATE RECORDING FUNCTION ===
+export const updateRecording = async (req, res) => {
+  try {
+    const { meetingId } = req.body;
+    const lecture = await LiveLecture.findOne({ meetingId });
+
+    if (!lecture) {
+      // Clean up uploaded file
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(404).json({ 
+        success: false, 
+        message: "Lecture not found" 
+      });
+    }
+
+    // Check if video file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No video file provided" 
+      });
+    }
+
+    console.log(`[Update Recording] Processing for: ${meetingId}`);
+
+    try {
+      // Upload new recording to Cloudinary
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: "video",
+        public_id: `lecture_${lecture._id}_${Date.now()}_updated`,
+        folder: "lms_recordings",
+        timeout: 180000
+      });
+
+      // Update lecture with new recording URL
+      const oldRecordingUrl = lecture.recordingUrl;
+      lecture.recordingUrl = uploadResult.secure_url;
+      lecture.recordingUpdatedAt = new Date();
+      await lecture.save();
+
+      console.log(`[Update Recording] Success! New URL: ${lecture.recordingUrl}`);
+
+      // Clean up uploaded file
+      fs.unlinkSync(req.file.path);
+
+      // TODO: Optionally delete old recording from Cloudinary
+      // This would require extracting public_id from old URL
+
+      res.status(200).json({
+        success: true,
+        message: "Recording updated successfully!",
+        url: lecture.recordingUrl,
+        oldUrl: oldRecordingUrl
+      });
+
+    } catch (uploadError) {
+      // Clean up uploaded file
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      throw uploadError;
+    }
+
+  } catch (error) {
+    console.error(`[Update Recording Error]:`, error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+};
+
+// === UPLOAD NOTES FUNCTION ===
+export const uploadNotes = async (req, res) => {
+  try {
+    const { meetingId } = req.body;
+    const lecture = await LiveLecture.findOne({ meetingId });
+
+    if (!lecture) {
+      // Clean up uploaded file
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(404).json({ 
+        success: false, 
+        message: "Lecture not found" 
+      });
+    }
+
+    // Check if notes file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No file provided" 
+      });
+    }
+
+    console.log(`[Upload Notes] Processing for: ${meetingId}`);
+    console.log(`[Upload Notes] File:`, req.file);
+
+    try {
+      // Determine resource type based on file extension
+      const fileExt = path.extname(req.file.originalname).toLowerCase();
+      let resourceType = 'raw';
+      if (['.jpg', '.jpeg', '.png', '.gif'].includes(fileExt)) {
+        resourceType = 'image';
+      } else if (['.pdf'].includes(fileExt)) {
+        resourceType = 'image'; // Cloudinary treats PDF as image
+      }
+
+      // Upload to Cloudinary
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: resourceType,
+        public_id: `notes_${lecture._id}_${Date.now()}`,
+        folder: "lms_notes",
+        timeout: 60000
+      });
+
+      // Update lecture with notes information
+      lecture.notes = {
+        url: uploadResult.secure_url,
+        name: req.file.originalname,
+        size: req.file.size,
+        type: req.file.mimetype,
+        uploadedAt: new Date()
+      };
+      await lecture.save();
+
+      console.log(`[Upload Notes] Success! URL: ${lecture.notes.url}`);
+
+      // Clean up uploaded file
+      fs.unlinkSync(req.file.path);
+
+      res.status(200).json({
+        success: true,
+        message: "Notes uploaded successfully!",
+        notes: lecture.notes
+      });
+
+    } catch (uploadError) {
+      // Clean up uploaded file
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      throw uploadError;
+    }
+
+  } catch (error) {
+    console.error(`[Upload Notes Error]:`, error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+};
+
+// === DELETE NOTES FUNCTION ===
+export const deleteNotes = async (req, res) => {
+  try {
+    const { meetingId } = req.body;
+    const lecture = await LiveLecture.findOne({ meetingId });
+
+    if (!lecture) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Lecture not found" 
+      });
+    }
+
+    if (!lecture.notes) {
+      return res.status(200).json({ 
+        success: true, 
+        message: "No notes to delete" 
+      });
+    }
+
+    console.log(`[Delete Notes] Deleting notes for: ${meetingId}`);
+
+    // Clear notes from lecture
+    lecture.notes = null;
+    await lecture.save();
+
+    // TODO: Optionally delete file from Cloudinary
+    // This would require extracting public_id from the URL
+
+    res.status(200).json({
+      success: true,
+      message: "Notes deleted successfully!"
+    });
+
+  } catch (error) {
+    console.error(`[Delete Notes Error]:`, error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+};
+
+// === GET ALL LECTURES ===
 export const getAllLectures = async (req, res) => {
   try {
-    let lectures = await LiveLecture.find()
+    const lectures = await LiveLecture.find()
       .populate('courseId', 'title thumbnail')
       .populate('instructorId', 'name photoUrl')
       .sort({ startTime: -1 });
 
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    const updates = lectures.map(async (lecture) => {
-      // Check if finished, no URL, and recently ended
-      if (!lecture.isActive && !lecture.recordingUrl && new Date(lecture.startTime) > oneDayAgo) {
-        try {
-          // Use Instance Method
-          const call = streamClient.video.call('default', lecture.meetingId);
-          const { recordings } = await call.queryRecordings();
-          
-          const validRecording = recordings.find(r => r.url && r.end_time);
-          
-          if (validRecording) {
-            lecture.recordingUrl = validRecording.url;
-            await lecture.save();
-          }
-        } catch (err) {
-           // Silent fail
-        }
-      }
-      return lecture;
-    });
-
-    await Promise.all(updates);
-
     res.status(200).json({ success: true, lectures });
   } catch (error) {
+    console.error("[Get All Lectures Error]:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
