@@ -2,7 +2,7 @@ import axios from "axios";
 import { ai } from "../configs/ai.js";
 import Lecture from "../models/lectureModel.js";
 import dotenv from "dotenv";
-
+import { indexLectureSummary } from "./indexLectureSummary.js";
 dotenv.config();
 
 const summariseUrl = process.env.SUMMARISE_URL || "";
@@ -65,6 +65,8 @@ async function getOrGenerateTranscription(lecture) {
 
   lecture.summary = transcriptionResult;
   await lecture.save();
+  await indexLectureSummary(lecture._id);
+
 
   return transcriptionResult;
 }
