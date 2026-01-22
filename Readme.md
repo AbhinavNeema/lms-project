@@ -7,7 +7,7 @@ A full‑stack **Learning Management System (LMS)** built to support teachers an
 ## 🌐 Live Demo
 
 🚀 **Deployed Website:**  
-👉 https://lms-by-tle-terminator.vercel.app/
+👉 https://lms-by-tle-terminator.vercel.app
 
 ---
 
@@ -70,7 +70,7 @@ The platform aims to bridge the gap between teaching plans and classroom executi
 * Course‑aware AI assistant that answers doubts using lecture context
 * Embedding‑based retrieval from course materials
 * Independent chat history per student
-* Pluggable to local LLMs (here we used Ollama) or API models
+* Pluggable to local LLMs or API models
 
 ### 🧠 AI Summary Generator 
 
