@@ -7,18 +7,17 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
-app.use(cors());
 app.use(express.json());
-
-const users = [
-  { id: 1, name: "Alice" },
-  { id: 2, name: "Bob" }
-];
-
-app.get("/api/users", (req, res) => {
-  res.json(users);
-});
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: frontendUrl,
+    credentials: true,
+  }),
+);
+app.use("/api/auth", authRouter);
 
 app.listen(port, async () => {
   await connectDb();

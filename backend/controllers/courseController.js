@@ -16,8 +16,14 @@ export const createCourse = async (req, res) => {
         const course = await Course.create({
             title,
             category,
+            enrolledStudents: [req.userId],
             creator: req.userId
         });
+        await User.findByIdAndUpdate(req.userId, {
+            $addToSet: {
+                enrolledCourses: course._id,
+            },
+            });
         return res.status(201).json(course);
     } catch (error) {
         return res.status(500).json({ message: `Failed to create course: ${error.message}` });

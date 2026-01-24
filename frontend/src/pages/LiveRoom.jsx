@@ -6,7 +6,11 @@ import {
   StreamVideoClient, 
   StreamCall, 
   StreamTheme,
+<<<<<<< HEAD
   SpeakerLayout, // <--- CHANGED FROM PaginatedGridLayout
+=======
+  SpeakerLayout, 
+>>>>>>> 19073ccdb869703e66f86f63cb2011e2c88a3cdc
   CallControls,
   useCallStateHooks
 } from '@stream-io/video-react-sdk';
@@ -81,7 +85,12 @@ export default function LiveRoom() {
       <div className="flex-1 relative bg-black overflow-hidden">
         {showWhiteboard ? (
           <div className="absolute inset-0 z-0">
+<<<<<<< HEAD
              <Tldraw />
+=======
+             {/* Updated Tldraw with licenseKey */}
+             <Tldraw licenseKey={import.meta.env.VITE_TLDRAW_LICENSE_KEY} />
+>>>>>>> 19073ccdb869703e66f86f63cb2011e2c88a3cdc
           </div>
         ) : (
           <div className="absolute inset-0 z-10 flex items-center justify-center">
@@ -241,7 +250,11 @@ export default function LiveRoom() {
       </StreamTheme>
     </StreamVideo>
   );
+<<<<<<< HEAD
 }
 
 
 
+=======
+}
+>>>>>>> 19073ccdb869703e66f86f63cb2011e2c88a3cdc
