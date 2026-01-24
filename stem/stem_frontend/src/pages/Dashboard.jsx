@@ -10,7 +10,7 @@ import {
   ArrowRight,
   ArrowLeft,
 } from "lucide-react";
-import { Button } from "@radix-ui/themes/dist/cjs/index.js";
+import { Button } from "@radix-ui/themes";
 import Loader from "../components/Loader";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -20,7 +20,7 @@ const API = `${BACKEND_URL}/api`;
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     initializeData();
