@@ -11,6 +11,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { Button } from "@radix-ui/themes/dist/cjs/index.js";
+import Loader from "../components/Loader";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const mainUrl = import.meta.env.VITE_MAIN_URL || "http://localhost:5173";
@@ -19,7 +20,7 @@ const API = `${BACKEND_URL}/api`;
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     initializeData();
@@ -71,11 +72,7 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="loading-dots flex gap-2">
-          <span className="w-3 h-3 bg-primary rounded-full"></span>
-          <span className="w-3 h-3 bg-primary rounded-full"></span>
-          <span className="w-3 h-3 bg-primary rounded-full"></span>
-        </div>
+        <Loader/>
       </div>
     );
   }
@@ -87,7 +84,7 @@ export default function Dashboard() {
         <Button
           variant="outline"
           className="flex items-center gap-2 mb-4"
-          onClick={() => navigate(window.location.href = mainUrl)}>
+          onClick={() => window.location.href = mainUrl}>
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
