@@ -1,7 +1,13 @@
 import mongoose from "mongoose";
 
-const MathTopicSchema = new mongoose.Schema(
+const TopicSchema = new mongoose.Schema(
   {
+    subject: {
+      type: String,
+      enum: ["math", "science", "computer"],
+      required: true,
+      index: true,
+    },
     title: {
       type: String,
       required: true,
@@ -11,6 +17,7 @@ const MathTopicSchema = new mongoose.Schema(
       type: String,
       enum: ["easy", "medium", "hard"],
       required: true,
+      index: true,
     },
     category: {
       type: String,
@@ -21,9 +28,7 @@ const MathTopicSchema = new mongoose.Schema(
       required: true,
     },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
-export default mongoose.model("MathTopic", MathTopicSchema);
+export default mongoose.model("Topic", TopicSchema);

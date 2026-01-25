@@ -9,7 +9,7 @@ const ExperimentSchema = new mongoose.Schema(
     },
     subject: {
       type: String,
-      enum: ["chemistry", "physics"],
+      enum: ["chemistry", "physics","computer","math"],
       required: true,
     },
     difficulty: {

@@ -3,11 +3,11 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 
-import mathRoutes from "./routes/math.routes.js";
 import experimentRoutes from "./routes/experiment.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import progressRoutes from "./routes/progress.routes.js";
 import initRoutes from "./routes/init.routes.js";
+import quizRouter from "./routes/quiz.route.js";
 
 dotenv.config();
 connectDB();
@@ -20,7 +20,7 @@ app.get("/", (_, res) => {
   res.json({ message: "STEM Explorer API" });
 });
 
-app.use("/api/math", mathRoutes);
+app.use("/api/quiz" , quizRouter);
 app.use("/api", experimentRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/progress", progressRoutes);

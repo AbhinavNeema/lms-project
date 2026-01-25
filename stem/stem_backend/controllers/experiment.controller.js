@@ -8,6 +8,14 @@ export const getPhysicsExperiments = async (req, res) => {
   res.json(await Experiment.find({ subject: "physics" }));
 };
 
+export const getComputerExperiments = async (req, res) => {
+  res.json(await Experiment.find({ subject: "computer" }));
+}
+
+export const getMathsExperiments = async (req, res) => {
+  res.json(await Experiment.find({ subject: "math" }));
+};
+
 export const getExperimentById = async (req, res) => {
   const { id } = req.params;
 
