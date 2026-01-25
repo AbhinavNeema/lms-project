@@ -545,66 +545,90 @@ function ViewCourse() {
   };
 
   const checkEnrollment = () => {
-    if (!userData?.enrolledCourses) return;
+  if (!userData || !selectedCourseData || !selectedCourseData._id) return;
 
-    const enrollment = userData.enrolledCourses.find((item) => {
-      const id = item.course ? item.course : item;
-      const itemId = typeof id === "object" ? id._id : id;
-      return itemId?.toString() === courseId;
-    });
+  const enrolledIds = (userData.enrolledCourses || []).map((id) =>
+    typeof id === "object" ? id._id?.toString() : id.toString()
+  );
 
-    if (enrollment) {
-      setIsEnrolled(true);
+  const isCreator =
+    selectedCourseData.creator === userData._id ||
+    selectedCourseData.creator?._id === userData._id;
 
-      if (enrollment.enrolledAt) {
-        setEnrolledDate(
-          new Date(enrollment.enrolledAt).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-        );
-      }
+  const isEnrolled = enrolledIds.includes(
+    selectedCourseData._id.toString()
+  );
+
+  setIsEnrolled(isCreator || isEnrolled);
+};
+
+
+
+  useEffect(() => {
+  if (!userData || !selectedCourseData) return;
+
+  const enrolledIds = (userData.enrolledCourses || []).map((id) =>
+    typeof id === "object" ? id._id?.toString() : id.toString()
+  );
+
+  const isCreator =
+    selectedCourseData.creator === userData._id ||
+    selectedCourseData.creator?._id === userData._id;
+
+  const enrolled = enrolledIds.includes(
+    selectedCourseData._id.toString()
+  );
+
+  setIsEnrolled(isCreator || enrolled);
+}, [userData, selectedCourseData]);
+useEffect(() => {
+  if (!isEnrolled || !courseId) return;
+  fetchLiveLectures();
+}, [isEnrolled, courseId]);
+useEffect(() => {
+  const getCreator = async () => {
+    if (!selectedCourseData?.creator) return;
+
+    try {
+      const result = await axios.post(
+        `${serverUrl}/api/course/getcreator`,
+        { userId: selectedCourseData.creator },
+        { withCredentials: true }
+      );
+      setCreatorData(result.data);
+    } catch (error) {
+      console.error("Error fetching creator:", error);
     }
   };
 
-  useEffect(() => {
-    fetchCourseData();
-    checkEnrollment();
-    if (isEnrolled) {
-      fetchLiveLectures();
-    }
-  }, [courseId, courseData, lectureData, isEnrolled]);
+  getCreator();
+}, [selectedCourseData]);
+useEffect(() => {
+  if (!creatorData?._id || !courseData?.length) return;
+
+  const creatorCourses = courseData.filter((c) => {
+    const creatorId =
+      typeof c.creator === "object" ? c.creator._id : c.creator;
+
+    return (
+      creatorId?.toString() === creatorData._id.toString() &&
+      c._id !== courseId
+    );
+  });
+
+  setSelectedCreatorCourse(creatorCourses);
+}, [creatorData, courseData, courseId]);
+
 
   useEffect(() => {
-    const getCreator = async () => {
-      if (selectedCourseData?.creator) {
-        try {
-          const result = await axios.post(
-            `${serverUrl}/api/course/getcreator`,
-            { userId: selectedCourseData.creator },
-            { withCredentials: true },
-          );
-          setCreatorData(result.data);
-        } catch (error) {
-          console.error("Error fetching creator:", error);
-        }
-      }
-    };
+  if (!courseData || courseData.length === 0) return;
 
-    getCreator();
-  }, [selectedCourseData]);
+  const foundCourse = courseData.find((c) => c._id === courseId);
+  if (foundCourse) {
+    dispatch(setSelectedCourseData(foundCourse));
+  }
+}, [courseData, courseId, dispatch]);
 
-  useEffect(() => {
-    if (creatorData?._id && courseData.length > 0) {
-      // Filters courses to show all courses by this creator (excluding the current one)
-      const creatorCourses = courseData.filter(
-        (course) =>
-          course.creator === creatorData._id && course._id !== courseId,
-      );
-      setSelectedCreatorCourse(creatorCourses);
-    }
-  }, [creatorData, courseData]);
 
   const handleEnroll = async (courseId, userId) => {
     try {
