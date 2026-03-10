@@ -16,38 +16,28 @@ function ProtectedRoute({ children }) {
 }
 
 function App() {
+  // ⭐ 1. SYNCHRONOUS CHECK: Run this immediately before rendering anything else
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get("token");
 
-  // ⭐ Handle token from external redirect (SSO)
-  useEffect(() => {
+  if (urlToken) {
+    // Save the token immediately
+    localStorage.setItem("token", urlToken);
 
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+    // Silently wipe the ?token=xyz from the browser's top bar without reloading the page
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 
-    if (token) {
-
-      localStorage.setItem("token", token);
-
-      // remove token from URL and redirect
-      window.location.replace("/chat");
-
-    }
-
-  }, []);
-
+  // ⭐ 2. Now grab the token. If they just arrived via SSO, this will successfully catch it!
   const token = localStorage.getItem("token");
 
   return (
     <BrowserRouter>
       <Routes>
-
         {/* login */}
         <Route
           path="/login"
-          element={
-            token
-              ? <Navigate to="/chat" replace />
-              : <LoginPage />
-          }
+          element={token ? <Navigate to="/chat" replace /> : <LoginPage />}
         />
 
         {/* chat list */}
@@ -81,7 +71,6 @@ function App() {
           path="*"
           element={<Navigate to={token ? "/chat" : "/login"} replace />}
         />
-
       </Routes>
     </BrowserRouter>
   );

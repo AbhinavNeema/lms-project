@@ -7,7 +7,7 @@ import { createEmbedding } from "../services/embeddingService.js";
 
 export async function syncEmbeddings() {
 
-  console.log("Checking lectures...");
+  // console.log("Checking lectures...");
 
   let lectures = [];
 
@@ -24,7 +24,7 @@ for (const lecture of lectures) {
   const course = await Course.findOne({ lectures: lecture._id });
 
   if (!course) {
-    console.log("No course found for lecture:", lecture.lectureTitle);
+    // console.log("No course found for lecture:", lecture.lectureTitle);
     continue;
   }
 
