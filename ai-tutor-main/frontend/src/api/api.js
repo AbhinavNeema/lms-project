@@ -1,5 +1,5 @@
 const API = import.meta.env.VITE_BACKEND_URL || "https://ai-tutor-1bp0.onrender.com";
-// console.log(API)
+console.log(API)
 
 function authHeaders() {
   const token = localStorage.getItem("token");
