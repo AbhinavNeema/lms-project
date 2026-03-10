@@ -46,6 +46,7 @@ const allowedOrigins = [
   "https://www.lmsbytle.codes",
   "http://stem.lmsbytle.codes",
   "https://stem.lmsbytle.codes",
+  "https://ai.lmsbytle.codes",
 ];
 
 let app = express()
