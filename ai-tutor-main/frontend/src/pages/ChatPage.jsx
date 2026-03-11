@@ -19,6 +19,9 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const { chatId } = useParams();
 
+  const API =
+    import.meta.env.VITE_BACKEND_URL || "https://ai-tutor-1bp0.onrender.com";
+
   // pull from zustand (assumes hook returns these functions & values)
   const { chats, setChats, messages, setMessages, setCurrentChat } = useChatStore();
 
@@ -271,7 +274,7 @@ export default function ChatPage() {
                       try {
 
                         const res = await fetch(
-                          "https://ai-tutor-1bp0.onrender.com/evaluate",
+                          `${API}/evaluate`,
                           {
                             method: "POST",
                             headers: {
