@@ -37,6 +37,7 @@ import StressAnalysis from "./pages/StressAnalysis";
 import useUsageTracker from "./hooks/useUsageTracker";
 import FlowchartDashboard from "./pages/FlowchartDashboard";
 import FlowchartEditor from "./pages/FlowchartEditor";
+import SsoRedirect from "./pages/SSoRedirect";
 
 export const serverUrl =
   import.meta.env.VITE_BACKEND || "http://localhost:8000";
@@ -66,6 +67,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+
+        <Route path="/sso" element={<SsoRedirect/>} />
 
         <Route
           path="/signup"

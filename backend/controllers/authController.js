@@ -3,6 +3,9 @@ import validator from "validator"
 import bcrypt from "bcryptjs"
 import User from "../models/userModel.js"
 import sendMail from "../configs/Mail.js"
+import crypto from "crypto"
+
+const ssoCodes = new Map(); // In-memory store for SSO codes
 
 export const signUp=async (req,res)=>{
     try {
@@ -181,3 +184,60 @@ export const resetPassword = async (req,res) => {
         return res.status(500).json({message:`Reset Password error ${error}`})
     }
 }
+
+export const generateSsoCode = async (req, res) => {
+    try {
+        if (!req.userId) {
+            return res.status(401).json({ message: "Not authenticated" });
+        }
+
+        // Generate a random 32-character hex string
+        const code = crypto.randomBytes(16).toString('hex');
+        
+        // Save the code and tie it to the logged-in user's ID
+        ssoCodes.set(code, req.userId);
+        
+        // Self-destruct the code after 60 seconds so it can't be stolen and used later
+        setTimeout(() => ssoCodes.delete(code), 60000); 
+        
+        return res.status(200).json({ code });
+    } catch (error) {
+        console.log("generateSsoCode error", error);
+        return res.status(500).json({ message: `SSO Code Generation Error: ${error}` });
+    }
+};
+
+export const exchangeSsoCode = async (req, res) => {
+    try {
+        const { code } = req.body;
+        
+        if (!code) {
+            return res.status(400).json({ message: "Code is required" });
+        }
+
+        // Check if the code exists and hasn't expired
+        const userId = ssoCodes.get(code);
+        if (!userId) {
+            return res.status(400).json({ message: "Invalid or expired code" });
+        }
+
+        // 🛡️ CRUCIAL: Immediately delete the code so it is strictly One-Time Use
+        ssoCodes.delete(code);
+
+        // Find the user to return their data along with the token
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Generate the standard JWT token
+        const token = await genToken(userId); 
+        
+        // Return the token and user in the JSON response
+        return res.status(200).json({ token, user });
+
+    } catch (error) {
+        console.log("exchangeSsoCode error", error);
+        return res.status(500).json({ message: `SSO Exchange Error: ${error}` });
+    }
+};

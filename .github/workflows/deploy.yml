@@ -28,11 +28,12 @@ jobs:
         run: |
           # 1. Create empty dummy files for backends so Docker Compose doesn't crash
           touch backend/.env
-          touch stem/stem_backend/.env
+          touch ai-tutor-main/backend/.env
           
           # 2. Inject your real GitHub Secrets for the frontends
           echo "${{ secrets.FRONTEND_ENV }}" > frontend/.env
           echo "${{ secrets.STEM_FRONTEND_ENV }}" > stem/stem_frontend/.env
+          echo "${{ secrets.AITUTOR_FRONTEND_ENV }}" > ai-tutor-main/frontend/.env
           
           # 3. Build and push!
           docker compose build
@@ -57,3 +58,6 @@ jobs:
             
             # Run the new containers in the background
             sudo docker compose up -d
+            
+            # Keep the EC2 server clean 
+            sudo docker system prune -af

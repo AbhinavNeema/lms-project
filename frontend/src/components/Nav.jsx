@@ -16,6 +16,8 @@ function Nav() {
   const [showPro, setShowPro] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  const AI_TUTOR_URL= import.meta.env.VITE_AI_TUTOR_URL || "https://ai-tutor-sepia-eight.vercel.app"
+
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -32,7 +34,9 @@ function Nav() {
       await axios.get(`${serverUrl}/api/auth/logout`, { withCredentials: true });
       dispatch(setUserData(null));
       toast.success("Logged out successfully");
-      navigate("/");
+      
+      const stemUrl = import.meta.env.VITE_STEM_URL || "http://localhost:3000";
+      window.location.href = `${stemUrl}/logout?returnTo=${encodeURIComponent(window.location.origin)}`;
     } catch (err) {
       toast.error("Logout failed");
     }
@@ -53,7 +57,7 @@ function Nav() {
     }
 
     window.open(
-      `https://ai-tutor-sepia-eight.vercel.app/?token=${token}`,
+      `${AI_TUTOR_URL}/?token=${token}`,
       "_blank"
     );
 

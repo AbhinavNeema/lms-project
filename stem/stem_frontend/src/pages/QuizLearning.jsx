@@ -414,6 +414,7 @@ import { toast } from "sonner";
 import { Button } from "@radix-ui/themes";
 import { motion, AnimatePresence } from "framer-motion";
 import Loader from "../components/Loader";
+import stemAPI from "../apis/axiosInstance";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const API = `${BACKEND_URL}/api/stem`;
@@ -485,7 +486,8 @@ export default function QuizLearning() {
   const fetchTopics = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API}/quiz/${subject}/topics`);
+      const response = await stemAPI.get(`/quiz/${subject}/topics`);
+      // console.log(response.data)
       setAllTopics(response.data || []);
       setFilteredTopics(response.data || []);
     } catch (error) {
@@ -521,8 +523,8 @@ export default function QuizLearning() {
     scrollToTop();
 
     try {
-      const response = await axios.get(
-        `${API}/quiz/${subject}/problems/${topic._id}`,
+      const response = await stemAPI.get(
+        `/quiz/${subject}/problems/${topic._id}`,
       );
       const data = Array.isArray(response.data) ? response.data : [];
       setProblems(data);
@@ -546,8 +548,8 @@ export default function QuizLearning() {
     }
 
     try {
-      const response = await axios.post(
-        `${API}/quiz/${subject}/check-answer?problem_id=${problem._id}&user_answer=${encodeURIComponent(userAnswer)}`,
+      const response = await stemAPI.post(
+        `/quiz/${subject}/check-answer?problem_id=${problem._id}&user_answer=${encodeURIComponent(userAnswer)}`,
       );
 
       setResult(response.data);
@@ -578,7 +580,7 @@ export default function QuizLearning() {
       const score = Math.round((finalCorrect / problems.length) * 100);
       
       try {
-        await axios.post(`${API}/progress`, {
+        await stemAPI.post(`/progress`, {
           subject,
           topic_id: selectedTopic._id,
           completed: true,

@@ -11,14 +11,14 @@ services:
       - ./backend/.env
     restart: unless-stopped
 
-  stem-backend:
-    build: ./stem/stem_backend
-    image: ghcr.io/abhas20/lms-stem-backend:latest
-    container_name: lms_stem_backend
+  ai-tutor-backend:
+    build: ./ai-tutor-main/backend
+    image: ghcr.io/abhas20/lms-aitutor-backend:latest
+    container_name: lms_aitutor_backend
     ports:
-      - "5001:5001"
+      - "5002:5002"
     env_file:
-      - ./stem/stem_backend/.env
+      - ./ai-tutor-main/backend/.env
     restart: unless-stopped
 
   stem-frontend:
@@ -30,7 +30,19 @@ services:
     env_file:
       - ./stem/stem_frontend/.env
     depends_on:
-      - stem-backend
+      - backend
+    restart: unless-stopped
+
+  ai-tutor-frontend:
+    build: ./ai-tutor-main/frontend
+    image: ghcr.io/abhas20/lms-aitutor-frontend:latest
+    container_name: lms_aitutor_frontend
+    ports:
+      - "3001:80"
+    env_file:
+      - ./ai-tutor-main/frontend/.env
+    depends_on:
+      - ai-tutor-backend
     restart: unless-stopped
 
   frontend:

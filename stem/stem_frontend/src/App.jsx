@@ -8,6 +8,9 @@ import { Toaster } from 'sonner';
 import QuizLearning from './pages/QuizLearning';
 import ExperimentLab from './pages/ExperimentLab';
 import useAuth from './hooks/useAuth';
+import TeacherTopics from './pages/AddTopic';
+import TeacherProblems from './pages/AddQuiz';
+import Logout from './pages/Logout';
 
 function App() {
   const { user, loading } = useAuth();
@@ -39,6 +42,17 @@ function App() {
           />
           <Route path="/tutor" element={<AITutor />} />
           <Route path="/progress" element={<ProgressTracker />} />
+          
+          <Route path='/add-quiz/:subject/:topicId'
+          element= {user.role === 'educator' ? <TeacherProblems /> : <Dashboard />} />
+          
+          <Route path='/add-quiz' 
+          element= {user.role === 'educator' ? <TeacherProblems /> : <Dashboard />} />
+
+          <Route path='/add-topic'
+          element= {user.role === 'educator' ? <TeacherTopics /> : <Dashboard />} />
+
+          <Route path='/logout' element={<Logout />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="top-center" />
