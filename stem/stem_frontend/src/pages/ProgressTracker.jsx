@@ -15,6 +15,7 @@ import {
 import { Button } from "@radix-ui/themes";
 import { motion } from "framer-motion";
 import Loader from "../components/Loader";
+import stemAPI from "../apis/axiosInstance";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const API = `${BACKEND_URL}/api/stem`;
@@ -30,7 +31,7 @@ export default function ProgressTracker() {
 
   const fetchProgress = async () => {
     try {
-      const response = await axios.get(`${API}/progress`);
+      const response = await stemAPI.get('/progress');
       setProgress(response.data);
       setLoading(false);
     } catch (error) {

@@ -17,6 +17,7 @@ import { Button } from "@radix-ui/themes";
 import Loader from "../components/Loader";
 import { motion } from "framer-motion";
 import AdventureSection from "../components/AdventureSection";
+import useAuth from "../hooks/useAuth";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const mainUrl = import.meta.env.VITE_MAIN_URL || "http://localhost:5173";
@@ -25,6 +26,7 @@ const API = `${BACKEND_URL}/api/stem`;
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [mode, setMode] = useState("quiz");
 
   const adventures = [
@@ -132,14 +134,24 @@ export default function Dashboard() {
             <span>Dashboard</span>
           </Button>
 
-          {/* Optional: Add a sleek right-side element like a user profile or 'Pro' badge if needed */}
-          <Button
-            onClick={() => {
-              navigate("/progress");
-            }}
-            className="flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all rounded-xl px-4 py-2 font-bold cursor-pointer group">
-            Progress
-          </Button>
+          <div className="flex items-center gap-3">
+            {user?.role === "educator" && (
+              <Button
+                onClick={() => navigate("/add-topic")}
+                className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 hover:bg-white/5 border border-yellow-400/20 transition-all rounded-xl px-4 py-2 font-bold cursor-pointer group">
+                <Sparkles className="w-4 h-4 text-yellow-400" />
+                <span>Educator Panel</span>
+              </Button>
+            )}
+
+            <Button
+              onClick={() => {
+                navigate("/progress");
+              }}
+              className="flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all rounded-xl px-4 py-2 font-bold cursor-pointer group">
+              Progress
+            </Button>
+          </div>
         </div>
       </div>
 

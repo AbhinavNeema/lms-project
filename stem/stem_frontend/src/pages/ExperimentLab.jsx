@@ -199,6 +199,7 @@ import {
 import { Button } from "@radix-ui/themes";
 import { motion } from "framer-motion";
 import Loader from "../components/Loader";
+import stemAPI from "../apis/axiosInstance";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const API = `${BACKEND_URL}/api/stem`;
@@ -263,7 +264,7 @@ export default function ExperimentLab() {
   const fetchExperiments = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API}/experiments/${subject}/experiments`);
+      const response = await stemAPI.get(`/experiments/${subject}/experiments`);
       setExperiments(response.data);
     } catch (error) {
       console.error("Error fetching experiments:", error);

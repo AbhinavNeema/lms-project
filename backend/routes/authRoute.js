@@ -1,5 +1,6 @@
 import express from "express"
-import {googleSignup, login, logOut, resetPassword, sendOtp, signUp, verifyOtp } from "../controllers/authController.js"
+import {exchangeSsoCode, generateSsoCode, googleSignup, login, logOut, resetPassword, sendOtp, signUp, verifyOtp } from "../controllers/authController.js"
+import isAuth from "../middlewares/isAuth.js"
 
 const authRouter = express.Router()
 
@@ -25,4 +26,7 @@ authRouter.get("/sso-token", (req, res) => {
   res.json({ token });
 
 });
+
+authRouter.get("/sso-code", isAuth, generateSsoCode);
+authRouter.post("/sso-exchange", exchangeSsoCode)
 export default authRouter

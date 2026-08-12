@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@radix-ui/themes";
 import { motion, AnimatePresence } from "framer-motion";
+import stemAPI from "../apis/axiosInstance";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const API = `${BACKEND_URL}/api/stem`;
@@ -46,7 +47,7 @@ export default function AITutor() {
 
   const fetchHistory = async () => {
     try {
-      const response = await axios.get(`${API}/chat/history/${sessionId}`);
+      const response = await stemAPI.get(`${API}/chat/history/${sessionId}`);
       setMessages(response.data);
     } catch (error) {
       console.error("Error fetching history:", error);
@@ -70,7 +71,7 @@ export default function AITutor() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/chat`, {
+      const response = await stemAPI.post(`${API}/chat`, {
         session_id: sessionId,
         message: text,
       });

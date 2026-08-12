@@ -34,7 +34,9 @@ function Nav() {
       await axios.get(`${serverUrl}/api/auth/logout`, { withCredentials: true });
       dispatch(setUserData(null));
       toast.success("Logged out successfully");
-      navigate("/");
+      
+      const stemUrl = import.meta.env.VITE_STEM_URL || "http://localhost:3000";
+      window.location.href = `${stemUrl}/logout?returnTo=${encodeURIComponent(window.location.origin)}`;
     } catch (err) {
       toast.error("Logout failed");
     }
